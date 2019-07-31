@@ -1,0 +1,12 @@
+name := "utest"
+organization := "com.lihaoyi"
+scalaVersion := "2.13.0"
+libraryDependencies += "org.portable-scala" %% "portable-scala-reflect" % "0.1.0"
+libraryDependencies += "org.scala-sbt" % "test-interface" % "1.0"
+testFrameworks += new TestFramework("test.utest.CustomFramework")
+Compile / unmanagedSourceDirectories += baseDirectory.value / "utest" / "src"
+Compile / unmanagedSourceDirectories += baseDirectory.value / "utest" / "src-2.13"
+Compile / unmanagedSourceDirectories += baseDirectory.value / "utest" / "jvm" / "src"
+Test / unmanagedSourceDirectories += baseDirectory.value / "utest" / "jvm" / "test" / "src"
+Test / unmanagedSourceDirectories += baseDirectory.value / "utest" / "test" / "src"
+Test / unmanagedSourceDirectories += baseDirectory.value / "utest" / "test" / "src-2.13"

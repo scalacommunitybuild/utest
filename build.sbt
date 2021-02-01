@@ -1,6 +1,6 @@
 name := "utest"
 organization := "com.lihaoyi"
-scalaVersion := "2.13.0"
+scalaVersion := "2.13.4"
 libraryDependencies += "org.portable-scala" %% "portable-scala-reflect" % "0.1.0"
 libraryDependencies += "org.scala-sbt" % "test-interface" % "1.0"
 testFrameworks += new TestFramework("test.utest.CustomFramework")

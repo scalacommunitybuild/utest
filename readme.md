@@ -1,27 +1,33 @@
-µTest 0.7.10 [![Build Status][travis-badge]][travis-link] [![Gitter Chat][gitter-badge]][gitter-link]
+µTest 0.9.0
 ====================================================================================================
 
-[travis-badge]: https://travis-ci.org/lihaoyi/utest.svg
-[travis-link]: https://travis-ci.org/lihaoyi/utest
-[gitter-badge]: https://badges.gitter.im/Join%20Chat.svg
-[gitter-link]: https://gitter.im/lihaoyi/utest?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
 
-![Splash.png](docs/Splash.png)
-
-uTest (pronounced micro-test) is a simple, intuitive testing library for Scala.
+uTest is a simple, convenient testing library for Scala.
 Its key features are:
 
 - Nicely formatted, colored, easy-to-read command-line test output
+
+![PrettyPrint.png](docs/PrettyPrint.png)
+
 - [Single uniform syntax for defining tests and grouping them together](#nesting-tests)
+
 - [Single uniform syntax for running test suites and individual tests](#running-tests)
+
 - [Single uniform syntax for Smart Asserts](#smart-asserts), instead of multiple
-  redundant `must_==`/`must beEqual`/`should be` opertors
+  redundant `must_==`/`must beEqual`/`should be` operators
+
+- Auto-updating [assertGoldenLiteral](#assertgoldenliteral) and [assertGoldenFile](#assertgoldenfile) assertions 
+  that make easy to keep your test suite up to date with the last behavior of your code
+
+![Golden.png](docs/Golden.png)
+
 - [Isolation-by-default for tests in the same suite](#sharing-setup-code-and-sharing-setup-objects)
-- Supports every version of Scala under the sun:
-  [Scala.js and Scala-Native](#scalajs-and-scala-native), Scala 2.13.0-M2,
-  projects using [SBT](#getting-started) or
+
+- Supports [Scala.js and Scala-Native](#scalajs-and-scala-native), Scala 2.12.x/2.13.x/3.x,
+  projects using [SBT](#getting-started) or [Mill](https://mill-build.org/mill/index.html)
   [standalone](#running-utest-standalone) (e.g. via a `main` method, or in
-  Ammonite Scripts)
+  Ammonite Scripts),
+  projects using [Gradle plugin for Scala.js and Scala Native](https://github.com/dubinsky/scalajs-gradle).
 
 Unlike traditional testing libraries for Scala (like
 [Scalatest](http://www.scalatest.org/) or
@@ -33,7 +39,7 @@ While uTest has many fewer features than other libraries,
 the features that it does provide are polished and are enough to build
 and maintain test suites of any size. uTest is used for countless projects, from
 the 1-file test suite for
-[Fansi](https://github.com/lihaoyi/fansi/blob/master/fansi/shared/src/test/scala/fansi/FansiTests.scala)
+[Fansi](https://github.com/lihaoyi/fansi)
 to the 50-file 9,000-line test suite for [Ammonite](https://github.com/lihaoyi/Ammonite)
 
 If you use uTest and like it, please support it by donating to our Patreon:
@@ -52,20 +58,21 @@ Contents
   - [Asynchronous Tests](#asynchronous-tests)
 - [Smart Asserts](#smart-asserts)
   - [Arrow Asserts](#arrow-asserts)
-  - [Intercept](#intercept)
-  - [Eventually and Continually](#eventually-and-continually)
-  - [Assert Match](#assert-match)
-  - [Compile Error](#compile-error)
+  - [assertThrows](#assertThrows)
+  - [assertEventually and assertContinually](#asserteventually-and-assertcontinually)
+  - [assertMatch](#assert-match)
+  - [assertCompileError](#assertcompileerror)
+  - [assertGoldenLiteral and assertGoldenFile](#assertgoldenliteral-and-assertgoldenfile)
 - [Test Utilities](#test-utilities)
   - [TestPath](#testpath)
   - [Local Retries](#local-retries)
 - [Configuring uTest](#configuring-utest)
+  - [Per-Run Setup/Teardown, and other test-running Config](#per-run-setupteardown-and-other-test-running-config)
   - [Output Formatting](#output-formatting)
   - [Suite Retries](#suite-retries)
   - [Running code before and after test cases](#running-code-before-and-after-test-cases)
   - [Running code before and after test suites](#running-code-before-and-after-test-suites)
   - [Test Wrapping](#test-wrapping)
-  - [Per-Run Setup/Teardown, and other test-running Config](#per-run-setupteardown-and-other-test-running-config)
 - [Scala.js and Scala-Native](#scalajs-and-scala-native)
 - [Running uTest Standalone](#running-utest-standalone)
 - [Why uTest](#why-utest)
@@ -80,17 +87,19 @@ can immediately begin defining and running tests programmatically.
 
 
 ```scala
-libraryDependencies += "com.lihaoyi" %% "utest" % "0.7.10" % "test"
+libraryDependencies += "com.lihaoyi" %% "utest" % "0.9.0" % "test" // Scala-JVM
+libraryDependencies += "com.lihaoyi" %%% "utest" % "0.9.0" % "test" // Scala.js or Scala-Native
 
 testFrameworks += new TestFramework("utest.runner.Framework")
 ```
 
-To use it with Scala.js or Scala-Native:
+Or Mill:
 
 ```scala
-libraryDependencies += "com.lihaoyi" %%% "utest" % "0.7.10" % "test"
+def mvnDeps = Seq(mvn"com.lihaoyi::utest:0.9.0") // Scala-JVM
+def mvnDeps = Seq(mvn"com.lihaoyi::utest::0.9.0") // Scala.js or Scala-Native
 
-testFrameworks += new TestFramework("utest.runner.Framework")
+def testFrameworks = Seq("utest.runner.Framework")
 ```
 
 For Scala-Native, you will also need
@@ -99,17 +108,20 @@ For Scala-Native, you will also need
 nativeLinkStubs := true
 ```
 
+[Gradle plugin for Scala.js and Scala Native](https://github.com/dubinsky/scalajs-gradle)
+supports using uTest with [Gradle](https://gradle.org/).
+
 Defining and Running a Test Suite
 =================================
 
 Put this in your `src/test/scala/` folder:
 
 ```scala
-package test.utest.examples
+package example
 
 import utest._
 
-object HelloTests extends TestSuite{
+class HelloTests extends TestSuite{
   val tests = Tests{
     test("test1"){
       throw new Exception("test1")
@@ -131,21 +143,27 @@ You can then run this via
 sbt myproject/test
 ```
 
+Or 
+
+```text
+./mill myproject.test
+```
+
 Which should produce this output:
 
 ```text
 -------------------------------- Running Tests --------------------------------
 Setting up CustomFramework
-X test.utest.examples.HelloTests.test1 4ms
+X example.HelloTests.test1 4ms
   java.lang.Exception: test1
-    test.utest.examples.HelloTests$.$anonfun$tests$2(HelloTests.scala:7)
-+ test.utest.examples.HelloTests.test2.inner 0ms  1
-X test.utest.examples.HelloTests.test3 0ms
+    example.HelloTests$.$anonfun$tests$2(HelloTests.scala:7)
++ example.HelloTests.test2.inner 0ms  1
+X example.HelloTests.test3 0ms
   java.lang.IndexOutOfBoundsException: 10
     scala.collection.LinearSeqOptimized.apply(LinearSeqOptimized.scala:63)
     scala.collection.LinearSeqOptimized.apply$(LinearSeqOptimized.scala:61)
     scala.collection.immutable.List.apply(List.scala:86)
-    test.utest.examples.HelloTests$.$anonfun$tests$5(HelloTests.scala:16)
+    example.HelloTests$.$anonfun$tests$5(HelloTests.scala:16)
 Tearing down CustomFramework
 Tests: 3, Passed: 1, Failed: 2
 ```
@@ -153,6 +171,7 @@ Tests: 3, Passed: 1, Failed: 2
 The tests are run one at a time, and any tests that fail with an exception have
 their stack trace printed. If the number of tests is large, a separate
 results-summary and failures-summary will be shown after all tests have run.
+Tests can either be inside zero-parameter `class`es (as shown above) or static `object`s.
 
 Nesting Tests
 -------------
@@ -163,12 +182,11 @@ uTest relies on the test structure to be statically known at compile time. They
 can be nested arbitrarily deep:
 
 ```scala
-package test.utest.examples
-
+package example
 
 import utest._
 
-object NestedTests extends TestSuite{
+class NestedTests extends TestSuite{
   val tests =  Tests{
     val x = 1
     test("outer1"){
@@ -202,12 +220,12 @@ When this suite is run with
 
 ```text
 ------------------------------- Running Tests -------------------------------
-+ test.utest.examples.NestedTests.outer1.inner1 21ms  (1,2)
-+ test.utest.examples.NestedTests.outer1.inner2 0ms
-+ test.utest.examples.NestedTests.outer2.inner3 0ms
++ example.NestedTests.outer1.inner1 21ms  (1,2)
++ example.NestedTests.outer1.inner2 0ms
++ example.NestedTests.outer2.inner3 0ms
 ```
 
-You can see also that `test.utest.examples.NestedTests.outer1.inner1` displays
+You can see also that `example.NestedTests.outer1.inner1` displays
 the value of `(x, y)` returned from the test: `(1,2)`. Returning a value from a
 test is useful if you want to skim the test's results after a run to perform
 manual sanity-checks on some computed value.
@@ -247,7 +265,7 @@ test, you can remove the duplication between the test name and the call to
 `runTestChecks()`:
 
 ```scala
-# Also works!
+// Also works!
 val tests = Tests{
   def runTestChecks()(implicit path: utest.framework.TestPath) = {
     val fileName = path.value.last
@@ -273,16 +291,22 @@ sbt myproject/test
 You can also run individual tests using their full path e.g.
 
 ```sh
-sbt 'myproject/test-only -- test.utest.examples.NestedTests.outer1.inner1'
-sbt 'myproject/test-only -- test.utest.examples.NestedTests.outer2.inner2'
-sbt 'myproject/test-only -- test.utest.examples.NestedTests.outer2.inner3'
+sbt 'myproject/test-only -- example.NestedTests.outer1.inner1'
+sbt 'myproject/test-only -- example.NestedTests.outer2.inner2'
+sbt 'myproject/test-only -- example.NestedTests.outer2.inner3'
+
+./mill myProject.test example.NestedTests.outer1.inner1
+./mill myProject.test example.NestedTests.outer2.inner2
+./mill myProject.test example.NestedTests.outer2.inner3
 ```
 
 You can also wrap the test selector in double quotes, which lets you run test
 whose path segments contain spaces or other special characters:
 
 ```sh
-sbt 'myproject/test-only -- "test.utest.examples.NestedTests.segment with spaces.inner"'
+sbt 'myproject/test-only -- "example.NestedTests.segment with spaces.inner"'
+
+./mill myProject.test "example.NestedTests.segment with spaces.inner"
 ```
 
 You can run groups of tests by providing the path to the block enclosing all of
@@ -290,13 +314,16 @@ them:
 
 ```sh
 # runs both tests `inner1` and `inner2`
-sbt 'myproject/test-only -- test.utest.examples.NestedTests.outer1'
+sbt 'myproject/test-only -- example.NestedTests.outer1'
+./mill myProject.test example.NestedTests.outer1
 
 # runs all tests in the `NestedTests` test suite
-sbt 'myproject/test-only -- test.utest.examples.NestedTests'
+sbt 'myproject/test-only -- example.NestedTests'
+./mill myProject.test example.NestedTests
 
-# runs all tests in `NestedTests` and any other suites within `test.utest.examples`
-sbt 'myproject/test-only -- test.utest.examples'
+# runs all tests in `NestedTests` and any other suites within `example`
+sbt 'myproject/test-only -- example'
+./mill myProject.test example
 ```
 
 You can also use the `{foo,bar}` syntax to specify exactly which tests you would
@@ -304,13 +331,16 @@ like to run:
 
 ```sh
 # runs both tests `inner2` and `inner3`, explicitly
-sbt 'myproject/test-only -- test.examples.NestedTests.outer1.{inner1,inner2}'
+sbt 'myproject/test-only -- example.NestedTests.outer1.{inner1,inner2}'
+./mill myProject.test 'example.NestedTests.outer1.{inner1,inner2}'
 
 # runs `outer1.inner1` and `outer2.inner3` but not `outer1.inner2`
-sbt 'myproject/test-only -- test.examples.NestedTests.{outer1.inner1,outer2.inner3}'
+sbt 'myproject/test-only -- example.NestedTests.{outer1.inner1,outer2.inner3}'
+./mill myProject.test 'example.NestedTests.{outer1.inner1,outer2.inner3}'
 
 # also runs `inner1` and `innerest` (and any other test inside `inner1`) but not `inner2`
-sbt 'myproject/test-only -- test.examples.NestedTests.{outer1.inner1,outer2}'
+sbt 'myproject/test-only -- example.NestedTests.{outer1.inner1,outer2}'
+./mill myProject.test 'example.NestedTests.{outer1.inner1,outer2}'
 ```
 
 The same syntax can be used to pick and choose specific `TestSuite`s to run, or
@@ -318,11 +348,11 @@ tests within those test suites:
 
 ```sh
 # Run every test in `HelloTests` and `NestedTests`
-sbt 'myproject/test-only -- test.examples.{HelloTests,NestedTests}'
+sbt 'myproject/test-only -- example.{HelloTests,NestedTests}'
 
 # Runs `HelloTests.test1`, `NestedTests.outer1.inner2` and `NestedTests.outer2.inner3`
-sbt 'myproject/test-only -- test.examples.{HelloTests.test1,NestedTests.outer2}'
-sbt 'myproject/test-only -- {test.examples.HelloTests.test1,test.examples.NestedTests.outer2}'
+sbt 'myproject/test-only -- example.{HelloTests.test1,NestedTests.outer2}'
+sbt 'myproject/test-only -- {example.HelloTests.test1,example.NestedTests.outer2}'
 ```
 
 In general, it doesn't really matter if you are running individual tests, groups
@@ -330,9 +360,10 @@ of tests within a `TestSuite`, individual `TestSuite`s, or packages containing
 `TestSuite`. These all form one a single large tree of tests that you can run,
 using the same uniform syntax.
 
-By default, SBT runs multiple test suites in parallel, so the output from
+By default, SBT and Mill run multiple test suites in parallel, so the output from
 those suites may be interleaved. You can set `parallelExecution in Test := false`
-in your SBT config to make the tests execute sequentially, so the output from
+in your SBT config or `def testParallelism = false` in your Mill config 
+to make the tests execute sequentially, so the output from
 each suite will be grouped together in the terminal.
 
 uTest defaults to emitting ANSI-colored terminal output describing the test run.
@@ -350,11 +381,11 @@ code, and each nested test with a `Tests` block gets its own copy of any mutable
 variables defined within it:
 
 ```scala
-package test.utest.examples
+package example
 
 import utest._
 
-object SeparateSetupTests extends TestSuite{
+class SeparateSetupTests extends TestSuite{
   val tests = Tests{
     var x = 0
     test("outer1"){
@@ -391,14 +422,14 @@ convenient to share common setup code between the various tests in your suite.
 
 If you want the mutable fixtures to really-truly be shared between individual
 tests (e.g. because they are expensive to repeatedly initialize) define it
-outside the `Tests{}` block in the enclosing object:
+outside the `Tests{}` block in the enclosing `class`:
 
 ```scala
-package test.utest.examples
+package example
 
 import utest._
 
-object SharedFixturesTests extends TestSuite{
+class SharedFixturesTests extends TestSuite{
   var x = 0
   val tests = Tests{
     test("outer1"){
@@ -444,9 +475,9 @@ test("test2") - processFileAndCheckOutput("input2.txt", "expected2.txt")
 test("test3") - processFileAndCheckOutput("input3.txt", "expected3.txt")
 ```
 
-The `test("string"){...}` and `test("symbol")...` syntaxes are equivalent.
+The `test("string"){...}` and `test("symbol") - ...` syntaxes are equivalent.
 
-The last way of defining tests is with the `utest.*` symbol, e.g. these tests
+The last way of defining tests is with a bare `test {...}` or `test - ...`, e.g. these tests
 from the [Fansi](https://github.com/lihaoyi/fansi/blob/master/fansi/shared/src/test/scala/fansi/FansiTests.scala)
 project:
 
@@ -457,9 +488,9 @@ test("parsing"){
     assert(parsed == frag)
     parsed
   }
-  test{ check(fansi.Color.True(255, 0, 0)("lol")) }
-  test{ check(fansi.Color.True(1, 234, 56)("lol")) }
-  test{ check(fansi.Color.True(255, 255, 255)("lol")) }
+  test - check(fansi.Color.True(255, 0, 0)("lol"))
+  test - check(fansi.Color.True(1, 234, 56)("lol"))
+  test - check(fansi.Color.True(255, 255, 255)("lol"))
   test{
     (for(i <- 0 to 255) yield check(fansi.Color.True(i,i,i)("x"))).mkString
   }
@@ -473,7 +504,7 @@ test("parsing"){
 }
 ```
 
-Tests defined using the `*` symbol are give the numerical names "0", "1", "2",
+Tests defined using the `test` symbol are give the numerical names "0", "1", "2",
 etc.. This is handy if you have a very large number of very simple test cases,
 don't really care what each one is called, but still want to be able to run them
 and collect their result separately.
@@ -502,11 +533,11 @@ val tests = Tests {
 }
 
 TestRunner.runAsync(tests).map { results =>
- val leafResults = results.leaves.toSeq
- assert(leafResults(0).value.isSuccess) // root
- assert(leafResults(1).value.isSuccess) // testSuccess
- assert(leafResults(2).value.isFailure) // testFail
- assert(leafResults(3).value.isSuccess) // normalSuccess
+  val leafResults = results.leaves.toSeq
+  assert(leafResults(0).value.isSuccess) // root
+  assert(leafResults(1).value.isSuccess) // testSuccess
+  assert(leafResults(2).value.isFailure) // testFail
+  assert(leafResults(3).value.isSuccess) // normalSuccess
 }
 ```
 
@@ -528,14 +559,17 @@ Smart Asserts
 ```scala
 val x = 1
 val y = "2"
-assert(
-  x > 0,
-  x == y
-)
+assert(x > 0)
+assert(x == y)
 
 // utest.AssertionError: x == y
 // x: Int = 1
 // y: String = 2
+
+assertAll( // Helper to perform multiple asserts at once
+  x > 0,
+  x == y
+)
 ```
 
 uTest comes with a macro-powered smart `assert`s that provide useful debugging
@@ -583,11 +617,11 @@ try{
 You can use `a ==> b` as a shorthand for `assert(a == b)`. This results in
 pretty code you can easily copy-paste into documentation.
 
-Intercept
+assertThrows
 ---------
 
 ```scala
-val e = intercept[MatchError]{
+val e = assertThrows[MatchError]{
   (0: Any) match { case _: String => }
 }
 println(e)
@@ -595,32 +629,32 @@ println(e)
 // scala.MatchError: 0 (of class java.lang.Integer)
 ```
 
-`intercept` allows you to verify that a block raises an exception. This
+`assertThrows` allows you to verify that a block raises an exception. This
 exception is caught and returned so you can perform further validation on it,
 e.g. checking that the message is what you expect. If the block does not raise
 one, an `AssertionError` is raised.
 
-As with `assert`, `intercept` adds debugging information to the error messages
-if the `intercept` fails or throws an unexpected Exception.
+As with `assert`, `assertThrows` adds debugging information to the error messages
+if the `assertThrows` fails or throws an unexpected Exception.
 
-Eventually and Continually
+assertEventually and assertContinually
 --------------------------
 
 ```scala
 val x = Seq(12)
-eventually(x == Nil)
+assertEventually(x == Nil)
 
-// utest.AssertionError: eventually(x == Nil)
+// utest.AssertionError: assertEventually(x == Nil)
 // x: Seq[Int] = List(12)
 ```
 
 In addition to a macro-powered `assert`, uTest also provides macro-powered
-versions of `eventually` and `continually`. These are used to test asynchronous
+versions of `assertEventually` and `assertContinually`. These are used to test asynchronous
 concurrent operations:
 
-- `eventually(tests: Boolean*)`: ensure that the boolean values of `tests` all
+- `assertEventually(tests: Boolean*)`: ensure that the boolean values of `tests` all
   become true at least once within a certain period of time.
-- `continually(tests: Boolean*)`: ensure that the boolean values of `tests` all
+- `assertContinually(tests: Boolean*)`: ensure that the boolean values of `tests` all
   remain true and never become false within a certain period of time.
 
 These are implemented via a retry-loop, with a default retry interval of 0.1
@@ -639,7 +673,7 @@ Together, these two operations allow you to easily test asynchronous operations.
 You can use them to help verify Liveness properties (that condition must
 eventually be met) and Safety properties (that a condition is never met)
 
-As with `assert`, `eventually` and `continually` add debugging information to
+As with `assert`, `assertEventually` and `assertContinually` add debugging information to
 the error messages if they fail.
 
 Assert Match
@@ -660,43 +694,43 @@ whose first item is `1`.
 As with `assert`, `assertMatch` adds debugging information to the error messages
 if the value fails to match or throws an unexpected Exception while evaluating.
 
-Compile Error
--------------
+assertCompileError
+------------------
 
 ```scala
-compileError("true * false")
+assertCompileError("true * false")
 // CompileError.Type("value * is not a member of Boolean")
 
-compileError("(}")
+assertCompileError("(}")
 // CompileError.Parse("')' expected but '}' found.")
 ```
 
-`compileError` is a macro that can be used to assert that a fragment of code
+`assertCompileError` is a macro that can be used to assert that a fragment of code
 (given as a literal String) fails to compile.
 
-- If the code compiles successfully, `compileError` will fail the compilation
+- If the code compiles successfully, `assertCompileError` will fail the compilation
   run with a message.
-- If the code fails to compile, `compileError` will return an instance of
+- If the code fails to compile, `assertCompileError` will return an instance of
   `CompileError`, one of `CompileError.Type(pos: String, msgs: String*)` or
   `CompileError.Parse(pos: String, msgs: String*)` to represent typechecker
   errors or parser errors
 
-In general, `compileError` works similarly to `intercept`, except it does its
+In general, `assertCompileError` works similarly to `assertThrows`, except it does its
 checks (that a snippet of code fails) and errors (if it doesn't fail) at
 compile-time rather than run-time. If the code fails as expected, the failure
 message is propagated to runtime in the form of a `CompileError` object. You can
 then do whatever additional checks you want on the failure message, such as
 verifying that the failure message contains some string you expect to be there.
 
-The `compileError` macro compiles the given string in the local scope and
+The `assertCompileError` macro compiles the given string in the local scope and
 context. This means that you can refer to variables in the enclosing scope, i.e.
 the following example will fail to compile because the variable `x` exists.
 
 ```scala
 val x = 0
 
-compileError("x + x"),
-// [error] compileError check failed to have a compilation error
+assertCompileError("x + x"),
+// [error] assertCompileError check failed to have a compilation error
 ```
 
 The returned `CompileError` object also has a handy `.check` method, which takes
@@ -705,9 +739,9 @@ zero-or-more messages which are expected to be part of the final error message.
 This is used as follows:
 
 ```scala
-compileError("true * false").check(
+assertCompileError("true * false").check(
   """
-compileError("true * false").check(
+assertCompileError("true * false").check(
                    ^
   """,
   "value * is not a member of Boolean"
@@ -716,8 +750,135 @@ compileError("true * false").check(
 
 Note that the position-string needs to exactly match the line of code the
 compile-error occured on. This includes any whitespace on the left, as well as
-any unrelated code or comments sharing the same line as the `compileError`
+any unrelated code or comments sharing the same line as the `assertCompileError`
 expression.
+
+assertGoldenLiteral
+-------------------
+Golden testing is a useful way of defining tests that assert the value of variable matches
+either a literal data structure or the contents of a file.
+For example, in `assertGoldenLiteral`,
+you pass in the runtime value on the left and the expected literal on the right:
+
+```scala
+val x = List(1, 2)
+assertGoldenLiteral(x, List(1, 2, 3, 4))
+```
+
+Running this test shows you the diff between the two values as well as an environment variable you can 
+pass to update the literal:
+
+```text
+X test.utest.examples.HelloTests.test 75ms 
+  utest.AssertionError: Actual value does not match golden data in file
+  /Users/lihaoyi/Github/utest/utest/test/src/test/utest/examples/HelloTests.scala
+  Run tests with UTEST_UPDATE_GOLDEN_TESTS=1 to apply the following patch to update the golden value
+  goldenValue != actualValue:
+  - List(1, 2, 3, 4)
+  + List(1, 2)
+    utest.asserts.AssertsPlatformSpecific.throwAssertionError(AssertsPlatformSpecific.scala:8)
+    utest.asserts.AssertsPlatformSpecific.assertGoldenLiteral(AssertsPlatformSpecific.scala:41)
+    utest.asserts.AssertsPlatformSpecific.assertGoldenLiteral$(AssertsPlatformSpecific.scala:6)
+    utest.package$.assertGoldenLiteral(package.scala:8)
+    test.utest.examples.HelloTests.$init$$$anonfun$1$$anonfun$1(HelloTests.scala:16)
+```
+
+Running the test with the `UTEST_UPDATE_GOLDEN_TESTS=1` environment variable will update the source
+code of your test suite in-place, using [PPrint](https://github.com/com-lihaoyi/PPrint) to convert
+the left-hand value into a string to splice into the source code. While this won't work for more
+complex data structures, it works well enough for the common cases which involve primitives,
+collections, and `case class`es. You can customize the printing logic by overriding 
+`def goldenLiteralPrinter` in a [custom framework](#configuring-utest). 
+
+### Using assertGoldenLiteral in helper methods
+
+`assertGoldenLiteral` can also be used in helper methods, in which case the helper should take
+the golden literal as an instance of type `utest.framework.GoldenFix.Span[T]` to capture the 
+source-metadata necessary to update the literal (filename, start/end offsets), as well as
+an implicit `utest.framework.GoldenFix.Reporter` (if not written within a `TestSuite` class
+which provides the reporter implicitly in scope):
+
+```scala
+def goldenHelper(value: List[Int],
+           golden: utest.framework.GoldenFix.Span[List[Int]]) = {
+  assertGoldenLiteral(value, golden)
+}
+test("test"){
+  val x = List(1, 2)
+  goldenHelper(x, List(1, 2))
+}
+```
+
+### Using assertGoldenLiteral to write your test 
+
+You can also use `assertGoldenLiteral` to automatically fill in the expected value the
+first time you run the test by passing in `()` as the current literal value, and running the
+test with `UTEST_UPDATE_GOLDEN_TESTS=1`. For example, starting with:
+
+```scala
+val x = List(1, 2)
+assertGoldenLiteral(x, ())
+```
+
+After running the test with `UTEST_UPDATE_GOLDEN_TESTS=1`, the code will be updated to
+
+```scala
+val x = List(1, 2)
+assertGoldenLiteral(x, List(1, 2))
+```
+
+This means it is easy to write the logic of the tests and have uTest "fill in the blanks"
+for you.
+
+See
+[Golden Literal Testing in uTest 0.9.0](https://www.lihaoyi.com/post/GoldenLiteralTestinginuTest090.html)
+for more details.
+
+`assertGoldenLiteral` is only supported on Scala-JVM, and not on Scala-JS and Scala-Native
+
+assertGoldenFile
+----------------
+
+`assertGoldenFile(String, java.nio.file.Path)` can be used to check that a `String`
+value matches the contents in the file at the given `java.nio.file.Path`, and update the file
+when `UTEST_UPDATE_GOLDEN_TESTS=1` is passed. A non-existent file is treated as equivalent
+to an empty string `""`, and running the test with `UTEST_UPDATE_GOLDEN_TESTS=1` will 
+
+
+```scala
+test("test"){
+  val expected =
+    """I am cow
+      |Hear me moo
+      |I weigh twice as much as you
+      |And I look good on the barbecue""".stripMargin
+  assertGoldenFile(expected, java.nio.file.Path.of("/Users/lihaoyi/Github/utest/hello.txt"))
+}
+```
+
+```text
+X test.utest.examples.HelloTests.test 72ms 
+  utest.AssertionError: Actual value does not match golden data in file
+  /Users/lihaoyi/Github/utest/hello.txt
+  Run tests with UTEST_UPDATE_GOLDEN_TESTS=1 to apply the following patch to update the golden value
+  goldenValue != actualValue:
+  - I am cow
+    I am cow
+    Hear me moo
+  - Moo
+  + I weigh twice as much as you
+  + And I look good on the barbecue
+    utest.asserts.AssertsPlatformSpecific.throwAssertionError(AssertsPlatformSpecific.scala:8)
+    utest.asserts.AssertsPlatformSpecific.assertGoldenFile(AssertsPlatformSpecific.scala:29)
+    utest.asserts.AssertsPlatformSpecific.assertGoldenFile$(AssertsPlatformSpecific.scala:6)
+    utest.package$.assertGoldenFile(package.scala:8)
+    test.utest.examples.HelloTests.$init$$$anonfun$1$$anonfun$1(HelloTests.scala:28)
+```
+
+Running the test again with `UTEST_UPDATE_GOLDEN_TESTS=1` will update the file on disk to
+use the latest value present during the test.
+
+`assertGoldenFile` is only supported on Scala-JVM, and not on Scala-JS and Scala-Native
 
 Test Utilities
 ==============
@@ -730,7 +891,7 @@ TestPath
 --------
 
 ```scala
-package test.utest.examples
+package example
 
 import utest._
 
@@ -880,11 +1041,11 @@ Apart from setup and teardown, there are other methods on
     */
   def useSbtLoggers = false
 
-  def resultsHeader = BaseRunner.renderBanner("Results")
-  def failureHeader = BaseRunner.renderBanner("Failures")
-
-
-  def startHeader(path: String) = BaseRunner.renderBanner("Running Tests" + path)
+  def resultsHeader = DefaultFormatters.resultsHeader
+  def failureHeader = DefaultFormatters.failureHeader
+  
+  
+  def startHeader(path: String) = DefaultFormatters.renderBanner("Running Tests" + path)
 ```
 
 Output Formatting
@@ -917,22 +1078,22 @@ def formatWrapWidth: Int = 100
 
 def formatValue(x: Any) = testValueColor(x.toString)
 
-def toggledColor(t: ufansi.Attrs) = if(formatColor) t else ufansi.Attrs.Empty
-def testValueColor = toggledColor(ufansi.Color.Blue)
-def exceptionClassColor = toggledColor(ufansi.Underlined.On ++ ufansi.Color.LightRed)
-def exceptionMsgColor = toggledColor(ufansi.Color.LightRed)
-def exceptionPrefixColor = toggledColor(ufansi.Color.Red)
-def exceptionMethodColor = toggledColor(ufansi.Color.LightRed)
-def exceptionPunctuationColor = toggledColor(ufansi.Color.Red)
-def exceptionLineNumberColor = toggledColor(ufansi.Color.LightRed)
+def toggledColor(t: utest.shaded.fansi.Attrs) = if(formatColor) t else utest.shaded.fansi.Attrs.Empty
+def testValueColor = toggledColor(utest.shaded.fansi.Color.Blue)
+def exceptionClassColor = toggledColor(utest.shaded.fansi.Underlined.On ++ utest.shaded.fansi.Color.LightRed)
+def exceptionMsgColor = toggledColor(utest.shaded.fansi.Color.LightRed)
+def exceptionPrefixColor = toggledColor(utest.shaded.fansi.Color.Red)
+def exceptionMethodColor = toggledColor(utest.shaded.fansi.Color.LightRed)
+def exceptionPunctuationColor = toggledColor(utest.shaded.fansi.Color.Red)
+def exceptionLineNumberColor = toggledColor(utest.shaded.fansi.Color.LightRed)
 def exceptionStackFrameHighlighter(s: StackTraceElement) = true
 
 def formatResultColor(success: Boolean) = toggledColor(
-  if (success) ufansi.Color.Green
-  else ufansi.Color.Red
+  if (success) utest.shaded.fansi.Color.Green
+  else utest.shaded.fansi.Color.Red
 )
 
-def formatMillisColor = toggledColor(ufansi.Bold.Faint)
+def formatMillisColor = toggledColor(utest.shaded.fansi.Bold.Faint)
 ```
 
 Any methods overriden on your own custom `Framework` apply to every `TestSuite`
@@ -941,8 +1102,8 @@ is formatted, you can override `utestFormatter` on that test suite.
 
 Note that uTest uses an internal copy of the
 [Fansi](https://www.github.com/lihaoyi/fansi) library, vendored at
-`utest.ufansi`, in order to avoid any compatibility problems with any of your
-other dependencies. You can use `ufansi` to construct the colored `ufansi.Str`s
+`utest.shaded.fansi`, in order to avoid any compatibility problems with any of your
+other dependencies. You can use `utest.shaded.fansi` to construct the colored `utest.shaded.fansi.Str`s
 that these methods require, or you could just return colored `java.lang.String`
 objects containing ANSI escapes, created however you like, and they will be
 automatically parsed into the correct format.
@@ -985,7 +1146,7 @@ def utestAfterEach(path: Seq[String]): Unit = ()
 These are equivalent to `utestWrap` but easier to use for simple cases.
 
 ```scala
-package test.utest.examples
+package example
 
 import utest._
 object BeforeAfterEachTest extends TestSuite {
@@ -1027,13 +1188,13 @@ object BeforeAfterEachTest extends TestSuite {
 Setting up CustomFramework
 on before each x: 0
 on after each x: 3
-+ test.utest.examples.BeforeAfterEachTest.outer1.inner1 22ms  3
++ example.BeforeAfterEachTest.outer1.inner1 22ms  3
 on before each x: 3
 on after each x: 4
-+ test.utest.examples.BeforeAfterEachTest.outer1.inner2 1ms  4
++ example.BeforeAfterEachTest.outer1.inner2 1ms  4
 on before each x: 4
 on after each x: 9
-+ test.utest.examples.BeforeAfterEachTest.outer2.inner3 0ms  9
++ example.BeforeAfterEachTest.outer2.inner3 0ms  9
 Tearing down CustomFramework
 Tests: 3, Passed: 3, Failed: 0
 ```
@@ -1078,7 +1239,7 @@ def utestAfterAll(): Unit = ()
 ```
 
 ```scala
-package test.utest.examples
+package example
 
 import utest._
 object BeforeAfterAllSimpleTests extends TestSuite {
@@ -1105,8 +1266,8 @@ object BeforeAfterAllSimpleTests extends TestSuite {
 -------------------------------- Running Tests --------------------------------
 Setting up CustomFramework
 on object body, aka: before all
-+ test.utest.examples.BeforeAfterAllSimpleTests.outer1.inner1 2ms  1
-+ test.utest.examples.BeforeAfterAllSimpleTests.outer1.inner2 0ms  2
++ example.BeforeAfterAllSimpleTests.outer1.inner1 2ms  1
++ example.BeforeAfterAllSimpleTests.outer1.inner2 0ms  2
 on after all
 ```
 
@@ -1329,6 +1490,100 @@ libraries are currently at.
 Changelog
 =========
 
+0.9.0
+-----
+
+* uTest now uses a vendored version of [PPrint](https://github.com/com-lihaoyi/PPrint)
+  to print out the value of local variables found during assertion errors. This includes proper
+  formatting, syntax highlighting, and a diff of the two values whenever an `a == b` equality
+  check fails:
+
+![PrettyPrint.png](docs/PrettyPrint.png)
+  
+* Golden testing is now supported via [assertGoldenLiteral](#assertgoldenliteral) and
+  [assertGoldenFile](#assertgoldenfile). This allows uTest to help you fill in the
+  "expected" value of simple assertions the first time you run the test, and keep
+  that value up to date as the behavior of your code evolves. See
+  [Golden Literal Testing in uTest 0.9.0](https://www.lihaoyi.com/post/GoldenLiteralTestinginuTest090.html)
+  for more details
+
+![Golden.png](docs/Golden.png)
+
+* Renamings: these are a breaking changes that will cause some inconvenience for people 
+  upgrading, but should result in a much more consistent user experience going forward
+  * `compileError` is now `assertCompileError`
+  * `eventually` is now `assertEventually`
+  * `continually` is now `assertContinually`
+  * `intercept` is now `assertThrows`
+
+* Test suites can now be `class`es rather than `object`s. `object`s are still supported for backwards 
+  compatibility, but using `class`es provide better scoping and encapsulation and
+  is the recommended style going forward [#173](https://github.com/com-lihaoyi/utest/issues/173)
+
+* Fixed a lot of old bugs and tickets
+  [#334](https://github.com/com-lihaoyi/utest/issues/334)
+  [#319](https://github.com/com-lihaoyi/utest/issues/319)
+  [#252](https://github.com/com-lihaoyi/utest/issues/252)
+  [#233](https://github.com/com-lihaoyi/utest/issues/233)
+  [#219](https://github.com/com-lihaoyi/utest/issues/219)
+  [#190](https://github.com/com-lihaoyi/utest/issues/190)
+  [#97](https://github.com/com-lihaoyi/utest/issues/97)
+
+0.8.9
+-----
+
+* More fixes for failed assertion line numbers [#382](https://github.com/com-lihaoyi/utest/pull/382)
+
+
+0.8.8
+-----
+
+* More fixes for failed assertion line numbers [#381](https://github.com/com-lihaoyi/utest/pull/381)
+
+0.8.7
+-----
+
+* Fix line numbers in failed assertion traces in Scala 3 [#380](https://github.com/com-lihaoyi/utest/pull/380)
+
+0.8.5
+-----
+
+* Run `Future` tests sequentially, not concurrently [#359](https://github.com/com-lihaoyi/utest/pull/359)
+* Minimum version of Java bumped from 8 to 11
+
+0.8.4
+-----
+
+* Avoid crashing if test logs have invalid ANSI escape codes [#344](https://github.com/com-lihaoyi/utest/pull/344)
+
+0.8.3
+-----
+
+* Support for Scala-Native 0.5.0
+
+0.8.2
+-----
+
+* Fix compiler warning when using `utest.framework.TestPath` [#309](https://github.com/com-lihaoyi/utest/pull/309)
+
+0.8.1
+-----
+
+* Add `++` to `Tests` so that test suites can be concatenated
+* Add `.prefix(name: String)` to `Tests` to nest all of its tests under a single test group with a given name
+
+0.8.0
+-----
+
+- Drop support for Scala.js 0.6
+- Bump Scala.js to 1.10 (minimum version supported is 1.8)
+- Bump Scala versions to latest (2.12.16, 2.13.8, 3.1.3)
+
+0.7.11
+-----
+
+- Add support for Scala 3 on Scala Native
+
 0.7.10
 -----
 
@@ -1399,7 +1654,7 @@ Changelog
 - Upgrade Scala Native 0.3.6 to 0.3.7
 - Replace Scala.JS' deprecated `TestUtils` with portable-scala-reflect
 
-0.6.6
+0.6.5
 -----
 - Bugfix where sometimes all tests would pass but report as failed (thanks @eatkins)
 - By default, don't cut-off and wrap output

@@ -6,13 +6,13 @@ import sbt.testing
 
 import scala.concurrent.{Await, Future}
 import concurrent.duration._
-import utest.framework.{ExecutionContext, Tree}
+import utest.framework.{ExecutionContext, PlatformShims, Tree}
 
-class Task(val taskDef: TaskDef,
-           runUTestTask: (Seq[Logger], EventHandler) => Future[Unit])
+class Task(_taskDef: TaskDef,
+           runUTestTask: (Seq[Logger], EventHandler) => Future[_])
            extends sbt.testing.Task{
 
-
+  def taskDef(): TaskDef = _taskDef
 
   def tags(): Array[String] = Array()
 

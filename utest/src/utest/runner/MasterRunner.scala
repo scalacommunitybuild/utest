@@ -42,7 +42,11 @@ final class MasterRunner(args: Array[String],
   def successCount: Int = success.get
   def failureCount: Int = failure.get
 
+  val allSuites = collection.mutable.Buffer.empty[TestSuite]
+  override def registerSuite(x: TestSuite) = allSuites.synchronized { allSuites.append(x) }
   def done(): String = {
+    utest.framework.TestSuitePlatformSpecific.processGolden(allSuites.toSeq, formatter.goldenLiteralPrinter)
+
     teardown()
     val total = success.get() + failure.get()
 
@@ -52,9 +56,9 @@ final class MasterRunner(args: Array[String],
         body = summaryOutputLines.get.mkString("\n"),
         failureMsg =
           if (failureOutputLines.get() == Nil) ""
-          else ufansi.Str(failureHeader) ++ ufansi.Str.join(
+          else utest.shaded.fansi.Str(failureHeader) ++ utest.shaded.fansi.Str.join(
             // reverse, because the list gets accumulated backwards
-            failureOutputLines.get().reverse.flatMap(Seq[ufansi.Str]("\n", _)): _*
+            failureOutputLines.get().reverse.flatMap(Seq[utest.shaded.fansi.Str]("\n", _))
           ),
         successCount = success.get(),
         failureCount = failure.get(),

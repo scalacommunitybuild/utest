@@ -5,8 +5,6 @@ package framework
 import scala.util.Try
 import scala.language.experimental.macros
 
-import utest.PlatformShims
-
 case class TestPath(value: Seq[String])
 object TestPath{
   @annotation.compileTimeOnly(
@@ -21,10 +19,20 @@ object TestPath{
   * executable, which when run either returns a Left(result) or a
   * Right(sequence) of child nodes which you can execute.
   */
-class TestCallTree(inner: => Either[Any, IndexedSeq[TestCallTree]]){
+class TestCallTree(inner: => Either[Any, IndexedSeq[TestCallTree]]) {
+
+  def evalInner() =
+    inner
+
+  def mapInner(f: Either[Any, IndexedSeq[TestCallTree]] => Either[Any, IndexedSeq[TestCallTree]]): TestCallTree =
+    new TestCallTree(f(inner))
+
+  def prefix: TestCallTree =
+    new TestCallTree(Right(IndexedSeq.empty[TestCallTree] :+ this))
+
   /**
    * Runs the test in this [[TestCallTree]] at the specified `path`. Called
-   * by the [[TestTreeSeq.run]] method and usually not called manually.
+   * by the [[TestCallTree.run]] method and usually not called manually.
    */
   def run(path: List[Int]): Any = {
     path match {

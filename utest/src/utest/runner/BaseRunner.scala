@@ -3,8 +3,9 @@ package runner
 //import acyclic.file
 import sbt.testing._
 
+import scala.concurrent.Future
 import scala.util.Failure
-import utest.framework.{StackMarker, Tree}
+import utest.framework.{PlatformShims, StackMarker, Tree}
 object BaseRunner{
   /**
     * Checks whether the given query needs the TestSuite at testSuitePath
@@ -34,20 +35,16 @@ object BaseRunner{
 }
 
 abstract class BaseRunner(val args: Array[String],
-                          val remoteArgs: Array[String],
+                          _remoteArgs: Array[String],
                           testClassLoader: ClassLoader,
                           useSbtLoggers: Boolean,
                           formatter: utest.framework.Formatter,
-                          startHeader: Option[String => String])
+                          startHeader: Option[String => String] = None)
                           extends sbt.testing.Runner{
 
-  def this(args: Array[String],
-    remoteArgs: Array[String],
-    testClassLoader: ClassLoader,
-    useSbtLoggers: Boolean,
-    formatter: utest.framework.Formatter) =
-      this(args, remoteArgs, testClassLoader, useSbtLoggers, formatter, None)
+  def remoteArgs(): Array[String] = _remoteArgs
 
+  def registerSuite(x: TestSuite): Unit = ()
   lazy val path = args.headOption.filter(_(0) != '-')
   lazy val query = path
     .map(TestQueryParser(_))
@@ -71,14 +68,28 @@ abstract class BaseRunner(val args: Array[String],
       throw new NoSuchTestException(unknownPaths:_*)
     }else for{
       taskDef <- taskDefs
-      if BaseRunner.checkOverlap(query, taskDef.fullyQualifiedName().split('.'))
-    } yield makeTask(taskDef)
+      fromSelectors = pathsFromSelectors(taskDef)
+      fullQuery = TestQueryParser.collapse(query ++ fromSelectors)
+      if BaseRunner.checkOverlap(fullQuery, taskDef.fullyQualifiedName().split('.'))
+    } yield makeTask(taskDef, fullQuery)
+  }
+
+  private def pathsFromSelectors(taskDef: TaskDef): TestQueryParser#Trees = {
+    if (taskDef.selectors().exists(!_.isInstanceOf[NestedTestSelector])) Nil
+    else {
+      val testNames = taskDef.selectors().collect {
+        case nts: NestedTestSelector => s"${nts.suiteId()}.${nts.testName()}"
+      }
+      try TestQueryParser(testNames.mkString(","))
+      catch { case _: Throwable => Nil }
+    }
   }
 
   def runSuite(loggers: Seq[Logger],
                suiteName: String,
                eventHandler: EventHandler,
-               taskDef: TaskDef) = {
+               taskDef: TaskDef,
+               fullQuery: TestQueryParser#Trees): Future[Option[TestSuite]] = {
 
     startHeader.foreach(h => println(h(path.fold("")(" " + _))))
 
@@ -97,6 +108,8 @@ abstract class BaseRunner(val args: Array[String],
           }
           def fingerprint() = taskDef.fingerprint()
           def duration() = millis
+
+          override def toString: String = selector().toString
         })
       }
     }
@@ -124,8 +137,9 @@ abstract class BaseRunner(val args: Array[String],
           addResult(fstr.render)
           log(fstr.render)
         }
-        scala.concurrent.Future.successful(())
+        scala.concurrent.Future.successful(None)
       case Right(suite) =>
+        registerSuite(suite)
         val innerQuery = {
           def rec(currentQuery: TestQueryParser#Trees, segments: List[String]): TestQueryParser#Trees = {
             segments match{
@@ -138,7 +152,7 @@ abstract class BaseRunner(val args: Array[String],
             }
 
           }
-          rec(query, suiteName.split('.').toList)
+          rec(fullQuery, suiteName.split('.').toList)
         }
 
         implicit val ec = utest.framework.ExecutionContext.RunNow
@@ -154,11 +168,6 @@ abstract class BaseRunner(val args: Array[String],
             result.value match{
               case Failure(e) =>
                 handleEvent(new OptionalThrowable(e), Status.Failure, subpath, result.milliDuration)
-                // Trim the stack trace so all the utest internals don't get shown,
-                // since the user probably doesn't care about those anyway
-                e.setStackTrace(
-                  e.getStackTrace.takeWhile(_.getClassName != "utest.framework.TestThunkTree")
-                )
                 incFailure()
                 addFailure(str.fold("")(_.render))
               case _ =>
@@ -171,21 +180,26 @@ abstract class BaseRunner(val args: Array[String],
           ec = ec
         )
 
-        results.map(suiteFormatter.formatSummary(suiteName, _).foreach(x => addResult(x.render)))
+        results.map { r =>
+          suiteFormatter.formatSummary(suiteName, r).foreach(x => addResult(x.render))
+          Some(suite)
+        }
     }
-
-
   }
 
 
-  private def makeTask(taskDef: TaskDef): sbt.testing.Task = {
-    new runner.Task(taskDef, runSuite(_, taskDef.fullyQualifiedName(), _, taskDef))
+  private def makeTask(taskDef: TaskDef, fullQuery: TestQueryParser#Trees): sbt.testing.Task = {
+    new runner.Task(taskDef, runSuite(_, taskDef.fullyQualifiedName(), _, taskDef, fullQuery))
   }
   // Scala.js test interface specific methods
-  def deserializeTask(task: String, deserializer: String => TaskDef): sbt.testing.Task =
-    makeTask(deserializer(task))
+  def deserializeTask(task: String, deserializer: String => TaskDef): sbt.testing.Task = {
+    val taskDef = deserializer(task)
+    val fromSelectors = pathsFromSelectors(taskDef)
+    val fullQuery = TestQueryParser.collapse(query ++ fromSelectors)
+    makeTask(taskDef, fullQuery)
+  }
 
   def serializeTask(task: sbt.testing.Task, serializer: TaskDef => String): String =
-    serializer(task.taskDef)
+    serializer(task.taskDef())
 
 }

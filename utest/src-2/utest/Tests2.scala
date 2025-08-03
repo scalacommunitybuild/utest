@@ -57,6 +57,9 @@ object TestsVersionSpecific {
 
         case q"""utest.this.`package`.test.apply($body)""" => (None, body)
         case q"""utest.`package`.test.apply($body)""" => (None, body)
+
+        case q"""{utest.this.`package`.test.apply($body); ()}""" => (None, body)
+        case q"""{utest.`package`.test.apply($body); ()}""" => (None, body)
       }
 
       def recurse(t: c.Tree, path: Seq[String]): (c.Tree, collection.Seq[c.Tree]) = {
@@ -71,7 +74,7 @@ object TestsVersionSpecific {
           override def transform(t: c.Tree) = {
             t match{
               case q"framework.this.TestPath.synthetic" =>
-                c.typeCheck(q"_root_.utest.framework.TestPath(_root_.scala.Array(..$path))")
+                c.typeCheck(q"_root_.utest.framework.TestPath(_root_.scala.IndexedSeq(..$path))")
               case _ => super.transform(t)
             }
           }

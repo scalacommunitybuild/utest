@@ -4,8 +4,7 @@ package framework
 
 import scala.collection.mutable
 import scala.util.{Failure, Success}
-import utest.shaded._
-import utest.shaded.fansi.{Attrs, Str}
+import fansi.{Attrs, Str}
 
 object Formatter extends Formatter
 /**

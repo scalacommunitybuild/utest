@@ -10,7 +10,7 @@ import utest._
 */
 class AssertsTests extends utest.TestSuite{
 
-  implicit val colors: shaded.pprint.TPrintColors = shaded.pprint.TPrintColors.Colors
+  implicit val colors: pprint.TPrintColors = pprint.TPrintColors.Colors
   def tests = Tests{
     test("assert"){
       test("success"){
@@ -34,8 +34,8 @@ class AssertsTests extends utest.TestSuite{
         }
 
         val expected = Seq(
-          TestValue.Single("x", Some(shaded.pprint.tprint[Int]), 1),
-          TestValue.Single("y", Some(shaded.pprint.tprint[String]), "2"),
+          TestValue.Single("x", Some(pprint.tprint[Int]), 1),
+          TestValue.Single("y", Some(pprint.tprint[String]), "2"),
           TestValue.Equality(
             TestValue.Single("x.toString", None, "1"),
             TestValue.Single("y", None, "2"),
@@ -58,7 +58,7 @@ class AssertsTests extends utest.TestSuite{
         }
 
         test{
-          val exText = shaded.fansi.Str(e.toString).plainText
+          val exText = fansi.Str(e.toString).plainText
           Predef.assert(
             exText.contains("y: String = \"2\"") && exText.contains("x: Int = 1"),
             "Logging doesn't display local values properly " + e.toString
@@ -279,7 +279,7 @@ class AssertsTests extends utest.TestSuite{
           // This is subtle: only `x` should be logged as an interesting value, for
           // `y` was not evaluated at all and could not have played a part in the
           // throwing of the exception
-          Predef.assert(e.captured == Seq(TestValue.Single("x", Some(shaded.pprint.tprint[Int]), 1)))
+          Predef.assert(e.captured == Seq(TestValue.Single("x", Some(pprint.tprint[Int]), 1)))
           Predef.assert(e.cause.isInstanceOf[MatchError])
           e.getMessage
         }
@@ -293,7 +293,7 @@ class AssertsTests extends utest.TestSuite{
           }
         }catch {case e: utest.AssertionError =>
           Predef.assert(e.getMessage.contains("123 + x + y"))
-          Predef.assert(e.captured == Seq(TestValue.Single("x", Some(shaded.pprint.tprint[Int]), 1), TestValue.Single("y", Some(shaded.pprint.tprint[Double]), 2.0)))
+          Predef.assert(e.captured == Seq(TestValue.Single("x", Some(pprint.tprint[Int]), 1), TestValue.Single("y", Some(pprint.tprint[Double]), 2.0)))
           e.getMessage
         }
       }

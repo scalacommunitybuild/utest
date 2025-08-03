@@ -120,7 +120,7 @@ object Tracer {
           val tmp: t = $x
           $logger(TestValue.Single(
             ${Expr(expr.asTerm.pos.sourceCode.get)},
-            Some(shaded.pprint.TPrint.default[T].render(shaded.pprint.TPrintColors.Colors)),
+            Some(pprint.TPrint.default[T].render(pprint.TPrintColors.Colors)),
             tmp
           ))
           tmp

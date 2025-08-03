@@ -3,7 +3,7 @@ import utest._
 
 object AssertsTestsVersionSpecific extends utest.TestSuite{
 
-  implicit val colors = shaded.pprint.TPrintColors.Colors
+  implicit val colors = pprint.TPrintColors.Colors
   def tests = Tests{
     test("assertCompileError"){
       test("failure"){
@@ -80,8 +80,8 @@ object AssertsTestsVersionSpecific extends utest.TestSuite{
       } catch{ case e: utest.AssertionError =>
 
         Predef.assert(e.captured == Seq(
-          TestValue.Single("x", Some(shaded.pprint.tprint[Int]), 1),
-          TestValue.Single("iAmCow", Some(shaded.pprint.tprint[Seq[String]]), Seq("2.0")))
+          TestValue.Single("x", Some(pprint.tprint[Int]), 1),
+          TestValue.Single("iAmCow", Some(pprint.tprint[Seq[String]]), Seq("2.0")))
         )
         Predef.assert(e.getMessage.contains("assertMatch(Seq(x, iAmCow, 3)){case Seq(1, 2) =>}"))
 
@@ -97,7 +97,7 @@ object AssertsTestsVersionSpecific extends utest.TestSuite{
         assertMatch(Seq(a.next(), 3, b)){case Seq(1, 2) =>}
         Predef.assert(false)
       } catch{ case e: utest.AssertionError =>
-        Predef.assert(e.captured == Seq(TestValue.Single("a", Some(shaded.pprint.tprint[Iterator[Nothing]]), Iterator.empty)))
+        Predef.assert(e.captured == Seq(TestValue.Single("a", Some(pprint.tprint[Iterator[Nothing]]), Iterator.empty)))
         Predef.assert(e.cause.isInstanceOf[NoSuchElementException])
         Predef.assert(e.getMessage.contains("assertMatch(Seq(a.next(), 3, b)){case Seq(1, 2) =>}"))
         e.getMessage

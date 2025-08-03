@@ -26,7 +26,7 @@ object GoldenFixTests extends utest.TestSuite {
       val replaced = GoldenFix.applyToText(
         "0123456789",
         Seq(GoldenFix(null, new GoldenFix.Literal("Hello"), 0, 0)),
-        utest.shaded.pprint.PPrinter.BlackWhite.apply(_).plainText
+        pprint.PPrinter.BlackWhite.apply(_).plainText
       )
       Predef.assert(replaced == "Hello0123456789")
     }
@@ -34,7 +34,7 @@ object GoldenFixTests extends utest.TestSuite {
       val replaced = GoldenFix.applyToText(
         "0123456789",
         Seq(GoldenFix(null, new GoldenFix.Literal("Hello"), 5, 5)),
-        utest.shaded.pprint.PPrinter.BlackWhite.apply(_).plainText
+        pprint.PPrinter.BlackWhite.apply(_).plainText
       )
       Predef.assert(replaced == "01234Hello56789")
     }
@@ -42,7 +42,7 @@ object GoldenFixTests extends utest.TestSuite {
       val replaced = GoldenFix.applyToText(
         "0123456789",
         Seq(GoldenFix(null, new GoldenFix.Literal("Hello"), 4, 6)),
-        utest.shaded.pprint.PPrinter.BlackWhite.apply(_).plainText
+        pprint.PPrinter.BlackWhite.apply(_).plainText
       )
       Predef.assert(replaced == "0123Hello6789")
     }
@@ -53,7 +53,7 @@ object GoldenFixTests extends utest.TestSuite {
           GoldenFix(null, new GoldenFix.Literal("Hello"), 0, 1),
           GoldenFix(null, new GoldenFix.Literal("World"), 5, 6)
         ),
-        utest.shaded.pprint.PPrinter.BlackWhite.apply(_).plainText
+        pprint.PPrinter.BlackWhite.apply(_).plainText
       )
       Predef.assert(replaced == "Hello1234World6789")
     }
@@ -63,7 +63,7 @@ object GoldenFixTests extends utest.TestSuite {
           |World
           |""".stripMargin,
         Seq(GoldenFix(null, new GoldenFix.Literal("I am\nCow"), 2, 4)),
-        utest.shaded.pprint.PPrinter.BlackWhite.apply(_).plainText
+        pprint.PPrinter.BlackWhite.apply(_).plainText
       )
       Predef.assert(
         replaced ==
@@ -82,7 +82,7 @@ object GoldenFixTests extends utest.TestSuite {
           GoldenFix(null, new GoldenFix.Literal("I am\nCow"), 2, 4),
           GoldenFix(null, new GoldenFix.Literal("Hear\nMe\nMoo"), 7, 8)
         ),
-        utest.shaded.pprint.PPrinter.BlackWhite.apply(_).plainText
+        pprint.PPrinter.BlackWhite.apply(_).plainText
       )
       Predef.assert(
         replaced ==

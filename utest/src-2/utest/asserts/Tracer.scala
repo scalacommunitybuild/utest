@@ -27,7 +27,7 @@ object Tracer{
       val $tempName = $tree
       $loggerName(utest.TestValue.Single(
         ${textRange(c)(tree)},
-        Some(implicitly[utest.shaded.pprint.TPrint[$tpe]].render(utest.shaded.pprint.TPrintColors.Colors)),
+        Some(implicitly[pprint.TPrint[$tpe]].render(pprint.TPrintColors.Colors)),
         $tempName
       ))
       $tempName

@@ -1,7 +1,6 @@
 package utest
 
-import utest.shaded._
-import utest.shaded.fansi.{Attrs, Str}
+import fansi.{Attrs, Str}
 
 //import acyclic.file
 
@@ -108,8 +107,8 @@ object AssertionError {
   }
 
   def render(msgPrefix: String, captured: Seq[TestValue], pprinter: AssertionError.Printer) = {
-    shaded.fansi.Str.join(
-      Seq[shaded.fansi.Str](msgPrefix) ++
+    fansi.Str.join(
+      Seq[fansi.Str](msgPrefix) ++
         captured.flatMap{
           case x: TestValue.Single =>
             Seq[fansi.Str](

@@ -1,3 +1,4 @@
+ThisBuild / resolvers += Resolver.scalaNightlyRepository
 name := "utest"
 organization := "com.lihaoyi"
 resolvers += "scala-integration" at

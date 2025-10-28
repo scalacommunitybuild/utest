@@ -3,7 +3,7 @@ name := "utest"
 organization := "com.lihaoyi"
 resolvers += "scala-integration" at
   "https://scala-ci.typesafe.com/artifactory/scala-integration/"
-scalaVersion := "2.13.16"
+scalaVersion := "2.13.17"
 libraryDependencies += "org.portable-scala" %% "portable-scala-reflect" % "0.1.0"
 libraryDependencies += "org.scala-sbt" % "test-interface" % "1.0"
 libraryDependencies += "com.lihaoyi" %% "pprint" % "0.9.3"

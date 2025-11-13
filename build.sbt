@@ -4,7 +4,8 @@ organization := "com.lihaoyi"
 resolvers += "scala-integration" at
   "https://scala-ci.typesafe.com/artifactory/scala-integration/"
 scalaVersion := "2.13.17"
-libraryDependencies += "org.portable-scala" %% "portable-scala-reflect" % "0.1.0"
+libraryDependencies += "org.portable-scala" %% "portable-scala-reflect" % "1.1.3"
+libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
 libraryDependencies += "org.scala-sbt" % "test-interface" % "1.0"
 libraryDependencies += "com.lihaoyi" %% "pprint" % "0.9.3"
 libraryDependencies += "com.lihaoyi" %% "fansi" % "0.5.1"
